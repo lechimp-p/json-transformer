@@ -1,11 +1,20 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Control.Monad.Trans.JSON
 where
 
-import Data.Text
+import Data.Text hiding (empty)
 import Data.Aeson
 import Data.Aeson.Types
 import Control.Monad
 import Control.Monad.Trans.Class
+import Control.Monad.Reader
+import Control.Monad.Writer
+import Control.Applicative
+
+----------
+-- Classes
+----------
 
 -- | A monad which is capable of querying JSON-input and
 --   writing JSON ouput
@@ -130,3 +139,38 @@ infixl 0 .?>
 --   and write operators.
 (.$) = ($)
 infixr 1 .$
+
+
+--------------
+-- Transformer
+--------------
+
+newtype JSONMonadT m a 
+    = JSONMonadT { runJSONMonadT' :: ReaderT Object (WriterT [Pair] m) a }
+    deriving (Monad)
+
+instance MonadTrans JSONMonadT where
+    lift = JSONMonadT . lift . lift
+
+instance Functor m => Functor (JSONMonadT m) where
+    fmap f = JSONMonadT . fmap f . runJSONMonadT'
+
+instance Applicative m => Applicative (JSONMonadT m) where
+    pure = JSONMonadT . pure
+    l <*> r = JSONMonadT $ runJSONMonadT' l <*> runJSONMonadT' r
+
+instance Alternative m => Alternative (JSONMonadT m) where
+    empty = JSONMonadT empty
+    l <|> r = JSONMonadT $ runJSONMonadT' l <|> runJSONMonadT' r
+    some = JSONMonadT . some . runJSONMonadT'
+    many = JSONMonadT . many . runJSONMonadT'
+
+instance MonadFix m => MonadFix (JSONMonadT m) where
+    mfix f = JSONMonadT . mfix $ runJSONMonadT' . f
+
+instance MonadPlus m => MonadPlus (JSONMonadT m) where
+    mzero = JSONMonadT mzero
+    l `mplus` r = JSONMonadT $ runJSONMonadT' l `mplus` runJSONMonadT' r
+
+instance MonadIO m => MonadIO (JSONMonadT m) where
+    liftIO = JSONMonadT . liftIO
