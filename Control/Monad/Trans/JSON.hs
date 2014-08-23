@@ -3,9 +3,11 @@
 module Control.Monad.Trans.JSON
 where
 
+import Data.ByteString.Lazy hiding (unzip, empty)
 import Data.Text hiding (empty)
 import Data.Aeson
 import Data.Aeson.Types
+import qualified Data.HashMap.Strict as HM
 import Control.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.Reader
@@ -34,6 +36,7 @@ class MonadJSONError m => MonadJSON m where
 data JSONError
     = MissingProperty Text
     | CantDecodeProperty Text String -- ^ name of property and aeson error message
+    | CantDecodeObject
     deriving (Show)
 
 -- | A monad which is capable of processing json errors
@@ -174,3 +177,31 @@ instance MonadPlus m => MonadPlus (JSONMonadT m) where
 
 instance MonadIO m => MonadIO (JSONMonadT m) where
     liftIO = JSONMonadT . liftIO
+
+instance MonadJSONError m => MonadJSONError (JSONMonadT m) where
+    throwJSONError = JSONMonadT . lift . lift . throwJSONError
+
+instance MonadJSONError m => MonadJSON (JSONMonadT m) where
+    maybeValue t = JSONMonadT $ asks (HM.lookup t)
+    writeProp p v = do
+        JSONMonadT . lift . tell $ [(p, toJSON v)] 
+        return v
+    extract m = do
+        obj <- JSONMonadT ask
+        JSONMonadT . lift . lift $ runJSONMonadTWithObject m obj
+    useObject obj = JSONMonadT . local (const obj) . runJSONMonadT'
+ 
+runJSONMonadTWithObject :: Monad m => JSONMonadT m a -> Object -> m (a, Value)
+runJSONMonadTWithObject m obj = do  
+    (a, ps) <- runWriterT . flip runReaderT obj . runJSONMonadT' $ m
+    return (a, object ps)
+
+runJSONMonadTWithoutObject :: Monad m => JSONMonadT m a -> m (a, Value)
+runJSONMonadTWithoutObject m = runJSONMonadTWithObject m HM.empty
+
+runJSONMonadT :: MonadJSONError m => Monad m => JSONMonadT m a -> ByteString -> m (a, Value)
+runJSONMonadT m bs = do
+    let res = decode bs
+    case res of
+        Just obj -> runJSONMonadTWithObject m obj
+        Nothing  -> throwJSONError CantDecodeObject
