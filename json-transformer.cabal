@@ -56,3 +56,4 @@ library
                         , bytestring ==0.10.*
                         , text ==1.1.*
                         , mtl ==2.2.*
+                        , transformers ==0.4.*
