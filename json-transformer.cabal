@@ -13,7 +13,7 @@ name:                json-transformer
 version:             0.1.0.0
 
 -- A short (one-line) description of the package.
-synopsis:            A monad transformer for reading and writing JSON-objects.
+synopsis:            A monad transformer for reading and writing JSON-objects, based on aeson.
 
 -- A longer description of the package.
 -- description:         
@@ -44,11 +44,15 @@ cabal-version:       >=1.8
 
 library
   -- Modules exported by the library.
-  -- exposed-modules:     
+    exposed-modules:    Control.Monad.Trans.JSON
   
   -- Modules included in this library but not exported.
   -- other-modules:       
   
   -- Other library packages from which modules are imported.
-  build-depends:       base ==4.6.*
-  
+    build-depends:        base ==4.6.*
+                        , unordered-containers ==0.2.*
+                        , aeson ==0.7.*
+                        , bytestring ==0.10.*
+                        , text ==1.1.*
+                        , mtl ==2.2.*
