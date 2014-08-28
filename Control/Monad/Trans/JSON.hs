@@ -129,7 +129,7 @@ infixl 0 .$>
 -- | Use the value of a property as input for the monad if it is there.
 (.?>) :: MonadJSON m => Text -> m a -> m (Maybe a)
 p .?> m = do
-    obj' <- prop p
+    obj' <- maybeProp p
     case obj' of
         Nothing -> return Nothing
         Just obj -> do
