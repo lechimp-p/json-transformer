@@ -36,7 +36,7 @@ class MonadJSONError m => MonadJSON m where
 data JSONError
     = MissingProperty Text
     | CantDecodeProperty Text String -- ^ name of property and aeson error message
-    | CantDecodeObject
+    | CantDecodeObject ByteString 
     deriving (Show)
 
 -- | A monad which is capable of processing json errors
@@ -204,4 +204,4 @@ runJSONMonadT m bs = do
     let res = decode bs
     case res of
         Just obj -> runJSONMonadTWithObject m obj
-        Nothing  -> throwJSONError CantDecodeObject
+        Nothing  -> throwJSONError $ CantDecodeObject bs 
